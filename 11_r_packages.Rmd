@@ -1,0 +1,27 @@
+---
+title: "Data analysis and visualization using R"
+author: "Michiel Noback"
+date: "november 2015"
+output:
+  ioslides_presentation: default
+  beamer_presentation:
+    colortheme: dolphin
+    fig_caption: no
+    toc: yes
+subtitle: advanced plotting with ggplot2
+job: lecturer at Hanze University of Applied Science
+---
+
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+##comment this out for pdf output
+source("rmarkdown_knitr_header.R")
+```
+
+
+```{r set_margins, echo = F}
+par(mar=c(3,3,1,0))
+```
+
+## Contents
+
+

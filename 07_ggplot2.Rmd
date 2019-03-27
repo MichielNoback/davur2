@@ -1,0 +1,373 @@
+---
+title: "Data analysis and visualization using R"
+author: "Michiel Noback"
+date: "november 2015"
+output:
+  ioslides_presentation: default
+  beamer_presentation:
+    colortheme: dolphin
+    fig_caption: no
+    toc: yes
+subtitle: advanced plotting with ggplot2
+job: lecturer at Hanze University of Applied Science
+---
+
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+##comment this out for pdf output
+source("rmarkdown_knitr_header.R")
+```
+
+
+```{r set_margins, echo = F}
+par(mar=c(3,3,1,0))
+```
+
+## Contents
+
+- The ggplot2 "syntax"
+- The different geoms
+- plot grids
+- modifying texts
+
+# Getting started
+
+## Using
+
+Install the package first, and load the library:
+
+```{r install_ggplot2, eval=F}
+install.packages("ggplot2")
+```
+
+
+```{r load_libs}
+library(ggplot2)
+library(tidyr)
+```
+
+## A first plot
+
+Here is a first plot.
+
+```{r first_plot, fig.width=6, fig.height=4}
+ggplot(data = airquality, mapping = aes(x = Temp, y = Ozone)) + geom_point()
+```
+
+----
+
+In base R, you would have done something like this:
+
+```{r first_plot_baseR, fig.width=6, fig.height=4}
+with(airquality, plot(x = Temp, y = Ozone))
+```
+
+Which is nicer? (nobrainer!)
+
+## And it gets better
+
+now do this in base R:
+
+```{r first_plot_w_color, fig.width=7, fig.height=4, warning=FALSE}
+ggplot(data = airquality, mapping = aes(x = Temp, y = Ozone, color=as.factor(Month))) + geom_point() + labs(color="Month")
+```
+
+## Critical viewing
+
+By the way, what can you tell about the temperature measurements when looking at these plots?
+
+Remember, you create plots with a purpose:
+
+1. communicate results in a visual way (audience: others)
+2. create a visual representation for inspecting results (audience: you)
+
+
+## Phylosophy of ggplot2
+
+
+"The emphasis in ggplot2 is reducing the amount of thinking time by making
+it easier to go from the plot in your brain to the plot on the page."  
+(Wickham, 2012)
+
+The way this is achieved is through "_The grammar of graphics_"
+
+## The grammar of graphics
+
+The grammar of graphics tells us that a statistical graphic is a mapping from data to aesthetic attributes (colour, shape, size) of geometric objects (points, lines, bars).
+
+The plot may also contain statistical transformations of the data and is drawn on a specific coordinate system. Faceting can be used to generate the same plot for different subsets of the dataset.
+
+(Wickham, 2010)
+
+# Building plots
+
+## Building blocks
+
+A graph in ggplot2 is built using a few building blocks. These three most basic ones are used in every plot you will create.
+
+```{r ggplot2_building_blocks_1, echo=FALSE}
+blocks <- read.table("data/ggplot2_elements.txt",
+                     sep=";",
+                     header = T,
+                     as.is = 1:2)
+kable(blocks[1:3,])
+```
+
+
+## The data
+
+This is of course the most important aspect of plotting. What may be challenging is the way the data is presented to ggplot2. Some data mangling is often required (dealt with in a next presentation)
+
+Here is an example dataset that requires some mangling, also called **_tidying_**. 
+
+----
+
+```{r read_dose_response, echo=FALSE}
+dose_response <- read.table("data/dose_response2.txt",
+                            header = T,
+                            sep=";",
+                            colClasses=c("character", "factor", "integer", "integer"))
+head(dose_response)
+```
+
+----
+
+Suppose you want to plot the response as a function of the dose. This is not straightforward) possible right now, because you want to do something like 
+
+```{r does_not_work1, eval=FALSE}
+ggplot(data=dose_response,
+       mapping = aes(x = "<I want to get the two dose levels here>",
+                     y = "<I want to get the response here>")) + 
+    geom_boxplot()
+```
+
+
+We need a to _tidy_ this data frame since the `dose_10_response` and `dose_100_response` columns actually describe the same valiable (measurement) but with different _conditions_
+
+## Tidying data using `tidyr::gather()`
+
+```{r tidy_it1}
+dose_response_tidy <- gather(data=dose_response, key=dose, value=response, "dose10mg", "dose100mg")
+dose_response_tidy$dose <- factor(dose_response_tidy$dose, levels=c("dose10mg", "dose100mg"), ordered=T)
+head(dose_response_tidy)
+```
+
+
+## jittered data with x and y
+
+Now, creating the plot in ggplot2 is a breeze
+
+```{r plot_tidy_basic, fig.width=6.5, fig.height=3.5}
+dr_plot <- ggplot(dose_response_tidy, aes(x = dose, y = response))
+dr_plot + geom_jitter(width = 0.1, height=0)
+```
+
+Would you proceed with this hypothetical drug?
+
+## Experimenting
+
+The process in plotting using ggplot2 is usually very iterative.  
+You start with the base plot, passing it the **_aesthetic_** for x and y, as shown above, and then experiment with **_geometries_**,  **_colors_** and **_faceting_**.
+
+Look at every result and ask yourself  
+
+- what story does is tell?
+- is it the story you seek to tell?
+
+Only after you finish this phase you should apply make-up (labels, texts).
+
+# Geometries
+
+## What are geometries
+
+Geometries are the ways data can be represented. Boxplot, scatterplot and histogram are few examples. There are **_many_** geoms available in ggplo2; type `geom_` in the console and you will get a listing.  
+
+Even more are available outside the ggplot2 package.
+
+We'll only explore a few.
+
+## Jitter
+
+Jitter is a good alternative to boxplot when you have small sample sizes, or discrete measurements resulting in much overlap. Use the width and height attributes to adjust the jittering.
+
+```{r plot_geom_jitter, fig.width=6, fig.height=3.5}
+dr_plot + geom_jitter(width = 0.1, height = 0)
+```
+
+## Boxplot
+
+Boxplot is our good friend displaying the 5-number summary. Here, some colors were added as well as the `varwidth` argument making the box width relative to the group size.
+
+```{r plot_geom_boxplot, fig.width=6, fig.height=3.5}
+dr_plot + geom_boxplot(fill=c('#E69F00','#56B4E9'), varwidth = T) + scale_x_discrete(labels=c("10 mg", "100 mg"))
+```
+
+
+
+
+
+
+
+Or, split over the sexes
+
+```{r plot_tidy_color, fig.width=7, fig.height=4}
+dr_plot + geom_jitter(width = 0.1, height = 0, aes(colour = sex))
+```
+
+----
+ Alternatively, use a grid of plots
+ 
+```{r plot_tidy_facet, fig.width=7, fig.height=4}
+dr_plot + 
+    geom_jitter(width = 0.1, height = 0, aes(colour = sex)) + 
+    facet_wrap( . ~ sex)
+```
+
+
+
+
+
+ 
+# A real case: PTSS and buddy dogs
+
+## Background
+
+The next series of slides show data that was collected in a research investigating the effect of buddy dogs on mental health of subjects with PTSS. Here, I show only one variable that was collected, a stress score.  
+
+Since the group size was very low, and there was no control group, statistical analyses was not really feasible.  
+
+But the question was: is there an indication of positive effect and a reason to continue?
+
+
+## The data
+
+Distress measured at three time points (0, 3 and 12 months) through questionnaires.
+
+```{r read_distress_data, echo = FALSE}
+distress_data <- read.table("data/distress_score_timeseries.txt", sep = "\t", header = T, dec=",")
+head(distress_data)
+```
+
+## What to visualize
+
+Several aspects are relevant here:
+
+- people do not want to read lots of numbers in a table
+- small sample size
+- connected measurements
+- the audience: no knowledge of statistics
+
+## A Jitterplot
+
+I chose a jitterplot because:  
+
+- it is well suited for small samples
+- it does not have the complexity of a box plot
+
+## Tidy the data
+
+Create a tidy ("long") version of the data
+
+
+```{r ptss_tidy}
+distress_data_tidy <- gather(distress_data, 
+                        key=Timepoint, 
+                        value=Stress, "T0", "T1", "T2")
+distress_data_tidy$Timepoint <- factor(distress_data_tidy$Timepoint, ordered = T)
+head(distress_data_tidy)
+```
+
+## First version
+
+Big plot symbols (powerpoint size), a bit of transparencey.  
+Little horizontal jitter, no vertical jitter: already measured in continuous scale.
+
+```{r ptss_jitter_1, fig.width=6, fig.height=3.5, echo=F}
+ggplot(distress_data_tidy, aes(x=Timepoint, y=Stress)) +
+    geom_jitter(width = 0.1, size = 2, alpha = 0.6)
+```
+Code will be shown in final slide.
+
+## Add mean and IQR
+
+To emphasise the trend in the timeseries, means and standard deviations from the mean were added ("below" the plot symbols!) using `stat_summary()`
+
+```{r ptss_jitter_2, fig.width=6, fig.height=3.5, echo=F}
+mean.sd <- function(x) {
+  c(y = mean(x), ymin=(mean(x)-sd(x)), ymax=(mean(x)+sd(x)))
+}
+
+ggplot(distress_data_tidy, aes(x=Timepoint, y=Stress)) +
+    stat_summary(fun.data=mean.sd, color = "darkred", size = 1.5) +
+    geom_jitter(width = 0.1, size = 2, alpha = 0.6)
+```
+
+## Emphasise worst cases
+
+To emphasise the development of subjects who were in the worst shape at the onset of the research(T0), the top 25% were highlighted.
+
+```{r ptss_highlight, echo=FALSE}
+distress_data$high_at_T0 <- ifelse(distress_data$T0 > quantile(distress_data$T0, 0.75), "highlight", "no_highlight")
+
+distress_data_tidy <- gather(distress_data, 
+                        key=Timepoint, 
+                        value=Stress, "T0", "T1", "T2")
+distress_data_tidy$Timepoint <- factor(distress_data_tidy$Timepoint, ordered = T)
+head(distress_data)
+```
+
+----
+
+```{r ptss_jitter_3, fig.width=8, fig.height=4.5, echo=F}
+p <- ggplot(distress_data_tidy, aes(x=Timepoint, y=Stress)) +
+    stat_summary(fun.data=mean.sd, color = "darkred", size = 1.5) +
+    geom_jitter(width = 0.1, size = 2, alpha = 0.6, aes(color = high_at_T0))
+p
+```
+
+## Last tweaks: fonts and legend
+
+```{r ptss_jitter_4, fig.width=8, fig.height=4.5, echo=F}
+p + theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16, face = "bold"),
+          legend.title = element_text(size = 14),
+          legend.text = element_text(size = 12)) +
+    labs(color="High at onset")
+```
+
+## The code for data preparation
+
+```{r ptss_data_prep_code, eval=FALSE}
+
+distress_data$high_at_T0 <- ifelse(
+    distress_data$T0 > quantile(distress_data$T0, 0.75),
+    "highlight",
+    "no_highlight")
+
+distress_data_tidy <- gather(distress_data, 
+                        key=Timepoint, 
+                        value=Stress, "T0", "T1", "T2")
+distress_data_tidy$Timepoint <- factor(distress_data_tidy$Timepoint,
+                                       ordered = T)
+
+mean.sd <- function(x) {
+  c(y = mean(x), ymin=(mean(x)-sd(x)), ymax=(mean(x)+sd(x)))
+}
+```
+
+
+## The code for the plot
+
+```{r ptss_plot_code, eval=FALSE}
+ggplot(distress_data_tidy, aes(x=Timepoint, y=Stress)) +
+    stat_summary(fun.data=mean.sd, color = "darkred", size = 1.5) +
+    geom_jitter(width = 0.1,
+                size = 2,
+                alpha = 0.6,
+                aes(color = high_at_T0)) + 
+    labs(color="High at onset") +
+    theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16, face = "bold"),
+          legend.title = element_text(size = 14),
+          legend.text = element_text(size = 12))
+```
+
